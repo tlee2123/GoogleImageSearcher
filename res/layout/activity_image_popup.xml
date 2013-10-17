@@ -12,7 +12,13 @@
         android:id="@+id/popup"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical" >  
+        android:orientation="vertical" >
+
+        <Button
+            android:id="@+id/button1"
+            android:layout_width="51dp"
+            android:layout_height="30dp"
+            android:text="OK" />
         
 		    <ImageView
 		        android:id="@+id/imageView1"

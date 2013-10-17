@@ -20,7 +20,10 @@ import com.tlee.googleimagesearcher.services.GoogleImageService;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.app.Activity;
+import android.app.Dialog;
 import android.content.Context;
+import android.content.DialogInterface;
+import android.content.DialogInterface.OnCancelListener;
 import android.graphics.drawable.BitmapDrawable;
 import android.util.Log;
 import android.view.Gravity;
@@ -32,6 +35,7 @@ import android.view.ViewGroup.LayoutParams;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.GridView;
 import android.widget.ImageView;
@@ -42,17 +46,15 @@ import android.widget.Toast;
 
 public class MainActivity extends Activity {
  
-  private static AsyncHttpClient client = new AsyncHttpClient();
   private GridView gridView;
   ImageLoaderAdapter imageLoaderAdapter;
-  PopupWindow popup;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 		this.gridView = (GridView) findViewById(R.id.gridView1);
-		imageLoaderAdapter = new ImageLoaderAdapter(MainActivity.this, 0);
+		imageLoaderAdapter = ImageLoaderAdapter.getInstance(MainActivity.this, 0);
 		registerListeners();
 	}
 	
@@ -64,7 +66,7 @@ public class MainActivity extends Activity {
         // TODO Auto-generated method stub
         ImageLoaderAdapter adapter = (ImageLoaderAdapter)gridView.getAdapter();
         ImageLoader imageLoader = adapter.getImageLoader();
-        //imageLoader.displayImage(adapter.getItem(position).getUrl(), (ImageView)imageView);
+
         showPopup(position, adapter, imageLoader);
         //Toast.makeText(MainActivity.this, imageLoaderAdapter.getItem(position).getTitle(),
             //Toast.LENGTH_SHORT).show();
@@ -137,32 +139,27 @@ public class MainActivity extends Activity {
   private void showPopup(final int position, final ImageLoaderAdapter adapter, final ImageLoader loader) {
     getActionBar().hide();
     
-    LayoutInflater inflater = (LayoutInflater) this.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-    View view = inflater.inflate(R.layout.activity_image_popup, null);
-    final LinearLayout layout = (LinearLayout) view.findViewById(R.id.popup);
+    final Dialog dialog = new Dialog(this);
+    dialog.setContentView(R.layout.activity_image_popup);
+    dialog.setTitle("Image Detail");
+    dialog.show();
     
-    popup = new PopupWindow(this);
-    popup.setContentView(layout);
-    popup.setWidth(LinearLayout.LayoutParams.MATCH_PARENT);
-    popup.setHeight(LinearLayout.LayoutParams.MATCH_PARENT);
-    popup.setFocusable(true);
-    //popup.setBackgroundDrawable(new BitmapDrawable());
-    ImageView imageView = (ImageView)view.findViewById(R.id.imageView1);
-    TextView textView = (TextView)view.findViewById(R.id.textView1);
+    ImageView imageView = (ImageView)dialog.findViewById(R.id.imageView1);
+    TextView textView = (TextView)dialog.findViewById(R.id.textView1);
     textView.setText(adapter.getItem(position).getTitle());
-    Log.i("POPUP", adapter.getItem(position).getUrl());
-    //loader.displayImage(adapter.getItem(position).getUrl(), imageView);
-    popup.update(50, 50, 300, 80);
-    
-    view.setOnClickListener(new OnClickListener() {
+    loader.displayImage(adapter.getItem(position).getUrl(), imageView);
+    Button cancelButton = (Button)dialog.findViewById(R.id.button1);
+    cancelButton.setOnClickListener(new OnClickListener() {
 
       @Override
-      public void onClick(View view) {
-        popup.dismiss();
-        getActionBar().show();
+      public void onClick(View v) {
+        // TODO Auto-generated method stub
+        dialog.dismiss();
       }
       
     });
+
+    Log.i("POPUP", adapter.getItem(position).getUrl());
   }
 
 }

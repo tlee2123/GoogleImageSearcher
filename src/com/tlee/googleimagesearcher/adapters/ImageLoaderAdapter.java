@@ -22,11 +22,18 @@ import android.widget.ImageView;
 
 public class ImageLoaderAdapter extends ArrayAdapter<ImageModel> {
   
+  private static ImageLoaderAdapter instance = null;
+  
   private ImageLoader imageLoader = ImageLoader.getInstance();
   private DisplayImageOptions options;
   private Context context;
+  
+  // Singleton to prevent reinitialization of the ImageLoader.
+  protected ImageLoaderAdapter() {
+    super(null, 0);
+  }
 
-  public ImageLoaderAdapter(Context context, int resource) {
+  protected ImageLoaderAdapter(Context context, int resource) {
     super(context, resource);
     // TODO Auto-generated constructor stub
     this.context = context;
@@ -46,6 +53,13 @@ public class ImageLoaderAdapter extends ArrayAdapter<ImageModel> {
         .build();
     
     imageLoader.init(config);
+  }
+  
+  public static ImageLoaderAdapter getInstance(Context context, int resource) {
+    if (instance == null) {
+      instance = new ImageLoaderAdapter(context, resource);
+    }
+    return instance;
   }
   
   @Override
