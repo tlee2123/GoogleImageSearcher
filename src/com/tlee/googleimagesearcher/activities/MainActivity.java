@@ -1,37 +1,30 @@
 package com.tlee.googleimagesearcher.activities;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import com.loopj.android.http.AsyncHttpClient;
-import com.loopj.android.http.AsyncHttpResponseHandler;
 import com.loopj.android.http.JsonHttpResponseHandler;
 import com.loopj.android.http.RequestParams;
 import com.nostra13.universalimageloader.core.ImageLoader;
 import com.tlee.googleimagesearcher.R;
+import com.tlee.googleimagesearcher.SearchOptionActivity;
 import com.tlee.googleimagesearcher.adapters.ImageLoaderAdapter;
 import com.tlee.googleimagesearcher.models.ImageModel;
 import com.tlee.googleimagesearcher.services.GoogleImageService;
 
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.app.Activity;
 import android.app.Dialog;
 import android.content.Context;
-import android.content.DialogInterface;
-import android.content.DialogInterface.OnCancelListener;
-import android.graphics.drawable.BitmapDrawable;
+import android.content.Intent;
 import android.util.Log;
-import android.view.Gravity;
-import android.view.LayoutInflater;
 import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.view.ViewGroup.LayoutParams;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
@@ -39,15 +32,17 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.GridView;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
-import android.widget.PopupWindow;
 import android.widget.TextView;
-import android.widget.Toast;
 
 public class MainActivity extends Activity {
+  
+  private static final int REQUEST_CODE = 0;
  
   private GridView gridView;
   ImageLoaderAdapter imageLoaderAdapter;
+  Bundle extras = new Bundle();
+  //private RequestParams defaultParams = new RequestParams();
+  private HashMap<String,String> savedParams = new HashMap<String,String>();
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -55,8 +50,49 @@ public class MainActivity extends Activity {
 		setContentView(R.layout.activity_main);
 		this.gridView = (GridView) findViewById(R.id.gridView1);
 		imageLoaderAdapter = ImageLoaderAdapter.getInstance(MainActivity.this, 0);
+    this.savedParams.put("v", "1.0");
+    this.savedParams.put("userip", "10.100.10.15");
+    
 		registerListeners();
 	}
+	
+   @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+      // Inflate the menu; this adds items to the action bar if it is present.
+      getMenuInflater().inflate(R.menu.main, menu);
+      return true;
+    }
+ 
+   @Override
+   public boolean onOptionsItemSelected(MenuItem item) {
+     switch (item.getItemId()) {
+       case R.id.action_settings:
+         showSearchOptions();
+         //Toast.makeText(getApplicationContext(), "TEST", Toast.LENGTH_SHORT).show();
+         break;
+       default:
+         break;
+     }
+     return true;
+   }
+ 
+  @Override
+  protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
+   super.onActivityResult(requestCode, resultCode, intent);
+   if (requestCode == REQUEST_CODE) {
+     if (resultCode == RESULT_OK) {
+       for (String key : intent.getExtras().keySet()) {
+         Log.i(key, intent.getExtras().getString(key));
+         this.savedParams.put(key, intent.getExtras().getString(key));
+       }
+     }
+   }
+  }
+ 
+  private void showSearchOptions() {
+    Intent intent = new Intent(getApplicationContext(), SearchOptionActivity.class);
+    startActivityForResult(intent, REQUEST_CODE);
+  }
 	
 	private void registerListeners() {
 	  this.gridView.setOnItemClickListener(new OnItemClickListener() {
@@ -68,26 +104,20 @@ public class MainActivity extends Activity {
         ImageLoader imageLoader = adapter.getImageLoader();
 
         showPopup(position, adapter, imageLoader);
-        //Toast.makeText(MainActivity.this, imageLoaderAdapter.getItem(position).getTitle(),
-            //Toast.LENGTH_SHORT).show();
       }
 	    
 	  });
+	  
 	}
 
-	@Override
-	public boolean onCreateOptionsMenu(Menu menu) {
-		// Inflate the menu; this adds items to the action bar if it is present.
-		getMenuInflater().inflate(R.menu.main, menu);
-		return true;
-	}
 	
 	public void search(View view) {
 	  imageLoaderAdapter.clear();
 	  EditText queryView = (EditText) findViewById(R.id.editText1);
-	  RequestParams params = new RequestParams("q", queryView.getText().toString());
-	  params.put("v", "1.0");
-	  params.put("userip", "10.100.10.13");
+	  RequestParams params = new RequestParams();
+	  for (String key : this.savedParams.keySet()) {
+	    params.put(key, this.savedParams.get(key));
+	  }
 	  
     for (int i=0; i<64; i+=4) {
       queryImageWithCursor(params, i);
@@ -125,7 +155,6 @@ public class MainActivity extends Activity {
             String title = result.getString("titleNoFormatting");
             String tbUrl = result.getString("tbUrl");
             String url = result.getString("url");
-            Log.i("SUCCESS", title);
             imageLoaderAdapter.add(new ImageModel(title, tbUrl, url));
           }
         } catch (JSONException e) {
@@ -137,7 +166,6 @@ public class MainActivity extends Activity {
   }
   
   private void showPopup(final int position, final ImageLoaderAdapter adapter, final ImageLoader loader) {
-    getActionBar().hide();
     
     final Dialog dialog = new Dialog(this);
     dialog.setContentView(R.layout.activity_image_popup);
@@ -159,7 +187,6 @@ public class MainActivity extends Activity {
       
     });
 
-    Log.i("POPUP", adapter.getItem(position).getUrl());
   }
 
 }

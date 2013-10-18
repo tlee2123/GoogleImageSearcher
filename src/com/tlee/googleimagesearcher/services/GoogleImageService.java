@@ -7,6 +7,7 @@ import com.loopj.android.http.RequestParams;
 import android.app.Service;
 import android.content.Intent;
 import android.os.IBinder;
+import android.util.Log;
 
 public class GoogleImageService extends Service {
   
@@ -15,7 +16,7 @@ public class GoogleImageService extends Service {
   private static AsyncHttpClient client = new AsyncHttpClient();
   
 	public GoogleImageService() {
-		client.addHeader("Referer", "http://www.google.com");
+		client.addHeader("Referer", "http://www.example.com");
 	}
 
 	@Override
@@ -25,6 +26,8 @@ public class GoogleImageService extends Service {
 	}
 	
 	public static void get(String url, RequestParams params, AsyncHttpResponseHandler handler) {
+	  Log.i("URL", getAbsoluteUrl(url));
+	  Log.i("PARAMS", params.toString());
 	  client.get(getAbsoluteUrl(url), params, handler);
 	}
 	

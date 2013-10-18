@@ -34,6 +34,10 @@
             android:exported="true" >
         </service>
 
+        <activity
+            android:name="com.tlee.googleimagesearcher.SearchOptionActivity"
+            android:label="@string/title_activity_search_option" >
+        </activity>
     </application>
 
 </manifest>
