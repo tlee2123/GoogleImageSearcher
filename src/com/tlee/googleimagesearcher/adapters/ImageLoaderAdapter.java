@@ -2,6 +2,7 @@ package com.tlee.googleimagesearcher.adapters;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.zip.Inflater;
 
 import com.nostra13.universalimageloader.cache.memory.impl.LruMemoryCache;
 import com.nostra13.universalimageloader.core.DisplayImageOptions;
@@ -13,6 +14,7 @@ import android.R;
 import android.content.Context;
 import android.net.Uri;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
@@ -65,20 +67,22 @@ public class ImageLoaderAdapter extends ArrayAdapter<ImageModel> {
   
   @Override
   public View getView(int position, View convertView, ViewGroup parent) {
-    
-    ImageView imageView;
-    if (convertView == null) {
-      imageView = new ImageView(this.context);
-      imageView.setLayoutParams(new GridView.LayoutParams(100, 100));
-      imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
-      imageView.setPadding(8, 8, 8, 8);
-    } else {
-      imageView = (ImageView) convertView;
-    }
+    ViewHolder holder;
 
-    imageLoader.displayImage(this.getItem(position).getThumbnailUrl(), imageView);
+    if (convertView == null) {
+      LayoutInflater inflater = (LayoutInflater)this.context
+          .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+      convertView = inflater.inflate(0x7f030003, null);
+      
+      holder = new ViewHolder();
+      holder.view = (ImageView)convertView.findViewById(0x7f09000c);
+      convertView.setTag(holder);
+    } else {
+      holder = (ViewHolder)convertView.getTag();
+    }
+    imageLoader.displayImage(this.getItem(position).getThumbnailUrl(), holder.view);
     estimatedLoadingPosition = position;
-    return imageView;
+    return convertView;
   }
   
   public ImageLoader getImageLoader() {
@@ -87,6 +91,10 @@ public class ImageLoaderAdapter extends ArrayAdapter<ImageModel> {
   
   public int getEstimatedPosition() {
     return estimatedLoadingPosition;
+  }
+  
+  static class ViewHolder {
+    ImageView view;
   }
 
 }

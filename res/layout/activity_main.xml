@@ -15,7 +15,7 @@
         android:layout_height="wrap_content"
         android:layout_alignParentRight="true"
         android:layout_alignTop="@+id/editText1"
-        android:text="Button" />
+        android:text="@string/search" />
 
     <EditText
         android:id="@+id/editText1"

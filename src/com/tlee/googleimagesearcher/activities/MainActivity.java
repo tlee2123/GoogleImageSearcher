@@ -1,6 +1,8 @@
 package com.tlee.googleimagesearcher.activities;
 
 import java.util.HashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -16,6 +18,7 @@ import com.tlee.googleimagesearcher.models.ImageModel;
 import com.tlee.googleimagesearcher.services.GoogleImageService;
 
 import android.os.Bundle;
+import android.os.Handler;
 import android.app.Activity;
 import android.app.Dialog;
 import android.content.Context;
@@ -40,7 +43,7 @@ import android.widget.Toast;
 public class MainActivity extends Activity {
   
   private static final int REQUEST_CODE = 0;
-  private static final long MAX_RESULT = 10000;
+  private static final long MAX_RESULT = 1000;
   private static final long THRESHOLD_COUNT = 64;
  
   private GridView gridView;
@@ -166,13 +169,23 @@ public class MainActivity extends Activity {
 	
 	public void buttonSearch(View view) {
 	  Log.i("BUTTONSEARCH", "TEST1");
+    hideKeyboard();
 	  imageLoaderAdapter.clear();
     search(view, 0);
 	}
 	
 	public void scrollSearch(View view, long start) {
+	  final View localView = view;
+	  final long localStart = start;
 	   Log.i("SCROLLSEARCH", "TEST1");
-	  search(view, start);
+	  Handler handler = new Handler();
+	  Runnable runSearch = new Runnable() {
+	    @Override
+	    public void run() {
+	      search(localView, localStart);
+	    }
+	  };
+	  handler.postDelayed(runSearch, 10000);
 	}
 
 	private void search(View view, long start) {
@@ -188,19 +201,28 @@ public class MainActivity extends Activity {
 	  }
 	  
     for (long i = start; i < counter; i += 4) {
-      Log.i("SEARCH", String.valueOf(start));
       queryImageWithCursor(params, i);
     }
     
+	  if (view.getId() == R.id.button1) {
+	    for (long i = start; i < counter; i += 4) {
+	      queryImageWithCursor(params, i);
+	    }
+	  } else {
+      for (long i = start; i < counter; i += 4) {
+        queryImageWithCursorAndDelay(params, i);
+      }
+	  }
+
     
-    MainActivity.this.runOnUiThread(new Runnable() {
+    Runnable notify = new Runnable() {
       @Override
       public void run() {
         imageLoaderAdapter.notifyDataSetChanged();
       }
-    });
-
-    hideKeyboard();
+    };
+    
+    MainActivity.this.runOnUiThread(notify);
 	}
 	
 	private void hideKeyboard() {
@@ -212,11 +234,12 @@ public class MainActivity extends Activity {
 	long getResultCount(JSONObject response) {
 	  String count = null;
 	  try {
-	    if (response.getJSONObject("responseData") != null) {
-	      count = response.getJSONObject("responseData").getJSONObject("cursor")
-	          .getString("estimatedResultCount");
-	      return Long.parseLong(count);
+	    if (response.getInt("responseStatus") == 200) {
+        count = response.getJSONObject("responseData").getJSONObject("cursor")
+            .getString("estimatedResultCount");
+        return Long.parseLong(count);
 	    }
+	    return 0;
     } catch (JSONException e) {
       // TODO Auto-generated catch block
       e.printStackTrace();
@@ -248,9 +271,51 @@ public class MainActivity extends Activity {
     });
 	}
 	
+	 private void queryWithDelay(RequestParams params) {
+	    final CountDownLatch signal = new CountDownLatch(1);
+	    
+	    GoogleImageService.get("/ajax/services/search/images", params, new JsonHttpResponseHandler() {
+	      @Override
+	      public void onSuccess(JSONObject response) {
+	        try {
+	          long tmpCounter = getResultCount(response);
+	          if (tmpCounter > 0) {
+	            counter = MAX_RESULT < tmpCounter  ? MAX_RESULT : tmpCounter;
+	            JSONArray results = response.getJSONObject("responseData").getJSONArray("results");
+	            for (int i = 0; i < results.length(); i++) {
+	              JSONObject result = results.getJSONObject(i);
+	              String title = result.getString("titleNoFormatting");
+	              String tbUrl = result.getString("tbUrl");
+	              String url = result.getString("url");
+	              imageLoaderAdapter.add(new ImageModel(title, tbUrl, url));
+	            }
+	          }
+	        } catch (JSONException e) {
+	          e.printStackTrace();
+	        }
+	      }
+	      
+	      @Override
+	      public void onFinish() {
+	        signal.countDown();
+	      }
+	    });
+	    
+	    try {
+	      signal.await(10, TimeUnit.SECONDS);
+	    } catch (InterruptedException e) {
+	      e.printStackTrace();
+	    }
+	  }
+	
   private void queryImageWithCursor(RequestParams params, long cursor) {
     params.put("start", String.valueOf(cursor));
     query(params);
+  }
+  
+  private void queryImageWithCursorAndDelay(RequestParams params, long cursor) {
+    params.put("start", String.valueOf(cursor));
+    queryWithDelay(params);
   }
   
   private void showPopup(final int position, final ImageLoaderAdapter adapter, final ImageLoader loader) {
