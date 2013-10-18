@@ -26,6 +26,8 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.AbsListView;
+import android.widget.AbsListView.OnScrollListener;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.Button;
@@ -33,23 +35,35 @@ import android.widget.EditText;
 import android.widget.GridView;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 public class MainActivity extends Activity {
   
   private static final int REQUEST_CODE = 0;
+  private static final long MAX_RESULT = 10000;
+  private static final long THRESHOLD_COUNT = 64;
  
   private GridView gridView;
+  private Button searchView;
   ImageLoaderAdapter imageLoaderAdapter;
   Bundle extras = new Bundle();
   private HashMap<String,String> savedParams = new HashMap<String,String>();
+  long counter = THRESHOLD_COUNT;
+  int lastQueryStart = 0;
+  long gridTotalItemCount = 0;
+  long gridVisibleItemCount = 0;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
-		this.gridView = (GridView) findViewById(R.id.gridView1);
+		this.gridView = (GridView)findViewById(R.id.gridView1);
+		this.searchView = (Button)findViewById(R.id.button1);
 		imageLoaderAdapter = ImageLoaderAdapter.getInstance(MainActivity.this, 0);
-    this.savedParams.put("v", "1.0");
+    imageLoaderAdapter.clear();
+    this.gridView.setAdapter(imageLoaderAdapter);
+    
+		this.savedParams.put("v", "1.0");
     this.savedParams.put("userip", "10.100.10.15");
     
 		registerListeners();
@@ -94,6 +108,7 @@ public class MainActivity extends Activity {
   }
 	
 	private void registerListeners() {
+	  
 	  this.gridView.setOnItemClickListener(new OnItemClickListener() {
 
       @Override
@@ -106,29 +121,81 @@ public class MainActivity extends Activity {
       }
 	    
 	  });
+
 	  
+	  this.gridView.setOnScrollListener(new OnScrollListener() {
+
+      @Override
+      public void onScroll(AbsListView view, int firstVisibleItem, int visibleItemCount,
+          int totalItemCount) {
+        // TODO Auto-generated method stub
+        gridVisibleItemCount = visibleItemCount;
+        gridTotalItemCount = totalItemCount;
+
+      }
+      
+      
+      @Override
+      public void onScrollStateChanged(AbsListView view, int scrollState) {
+        // TODO Auto-generated method stub
+        if (scrollState == AbsListView.OnScrollListener.SCROLL_STATE_TOUCH_SCROLL) {       
+          long remainingItemCount = gridTotalItemCount - gridVisibleItemCount;
+          if (remainingItemCount < THRESHOLD_COUNT) {
+            long start = gridTotalItemCount + 4;
+            Log.i("ONSEARCH", String.valueOf(gridTotalItemCount));
+            scrollSearch(view, start);
+          }
+          
+        }
+      }
+	    
+	  });
+	  
+	  
+	  this.searchView.setOnClickListener(new OnClickListener() {
+
+      @Override
+      public void onClick(View view) {
+        // TODO Auto-generated method stub
+        buttonSearch(view);
+      }
+	    
+	  });
+	 
+	}
+	
+	public void buttonSearch(View view) {
+	  Log.i("BUTTONSEARCH", "TEST1");
+	  imageLoaderAdapter.clear();
+    search(view, 0);
+	}
+	
+	public void scrollSearch(View view, long start) {
+	   Log.i("SCROLLSEARCH", "TEST1");
+	  search(view, start);
 	}
 
-	
-	public void search(View view) {
-	  imageLoaderAdapter.clear();
+	private void search(View view, long start) {
 	  EditText queryView = (EditText) findViewById(R.id.editText1);
+    if (queryView.getText().toString().isEmpty()) {
+      Toast.makeText(getApplicationContext(), "Enter your search terms", Toast.LENGTH_LONG).show();
+      return;
+    }
 	  RequestParams params = new RequestParams();
 	  params.put("q", queryView.getText().toString());
 	  for (String key : this.savedParams.keySet()) {
 	    params.put(key, this.savedParams.get(key));
 	  }
 	  
-    for (int i=0; i<64; i+=4) {
+    for (long i = start; i < counter; i += 4) {
+      Log.i("SEARCH", String.valueOf(start));
       queryImageWithCursor(params, i);
     }
     
-    gridView.setAdapter(imageLoaderAdapter);
     
     MainActivity.this.runOnUiThread(new Runnable() {
       @Override
       public void run() {
-        // TODO Auto-generated method stub
         imageLoaderAdapter.notifyDataSetChanged();
       }
     });
@@ -142,27 +209,48 @@ public class MainActivity extends Activity {
     imm.hideSoftInputFromWindow(edit.getWindowToken(), 0);
 	}
 	
-  private void queryImageWithCursor(RequestParams params, int cursor) {
-    params.put("start", String.valueOf(cursor));
-    
+	long getResultCount(JSONObject response) {
+	  String count = null;
+	  try {
+	    if (response.getJSONObject("responseData") != null) {
+	      count = response.getJSONObject("responseData").getJSONObject("cursor")
+	          .getString("estimatedResultCount");
+	      return Long.parseLong(count);
+	    }
+    } catch (JSONException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
+	  return 0;
+	}
+	
+	private void query(RequestParams params) {
     GoogleImageService.get("/ajax/services/search/images", params, new JsonHttpResponseHandler() {
       @Override
       public void onSuccess(JSONObject response) {
         try {
-          JSONArray results = response.getJSONObject("responseData").getJSONArray("results");
-          for (int i = 0; i < results.length(); i++) {
-            JSONObject result = results.getJSONObject(i);
-            String title = result.getString("titleNoFormatting");
-            String tbUrl = result.getString("tbUrl");
-            String url = result.getString("url");
-            imageLoaderAdapter.add(new ImageModel(title, tbUrl, url));
+          long tmpCounter = getResultCount(response);
+          if (tmpCounter > 0) {
+            counter = MAX_RESULT < tmpCounter  ? MAX_RESULT : tmpCounter;
+            JSONArray results = response.getJSONObject("responseData").getJSONArray("results");
+            for (int i = 0; i < results.length(); i++) {
+              JSONObject result = results.getJSONObject(i);
+              String title = result.getString("titleNoFormatting");
+              String tbUrl = result.getString("tbUrl");
+              String url = result.getString("url");
+              imageLoaderAdapter.add(new ImageModel(title, tbUrl, url));
+            }
           }
         } catch (JSONException e) {
-          // TODO Auto-generated catch block
           e.printStackTrace();
         }
       }
     });
+	}
+	
+  private void queryImageWithCursor(RequestParams params, long cursor) {
+    params.put("start", String.valueOf(cursor));
+    query(params);
   }
   
   private void showPopup(final int position, final ImageLoaderAdapter adapter, final ImageLoader loader) {

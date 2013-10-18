@@ -27,6 +27,7 @@ public class ImageLoaderAdapter extends ArrayAdapter<ImageModel> {
   private ImageLoader imageLoader = ImageLoader.getInstance();
   private DisplayImageOptions options;
   private Context context;
+  private int estimatedLoadingPosition = 0;
   
   // Singleton to prevent reinitialization of the ImageLoader.
   protected ImageLoaderAdapter() {
@@ -74,13 +75,18 @@ public class ImageLoaderAdapter extends ArrayAdapter<ImageModel> {
     } else {
       imageView = (ImageView) convertView;
     }
-    Log.i("getView", String.valueOf(position));
+
     imageLoader.displayImage(this.getItem(position).getThumbnailUrl(), imageView);
+    estimatedLoadingPosition = position;
     return imageView;
   }
   
   public ImageLoader getImageLoader() {
     return this.imageLoader;
+  }
+  
+  public int getEstimatedPosition() {
+    return estimatedLoadingPosition;
   }
 
 }
