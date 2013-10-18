@@ -41,7 +41,6 @@ public class MainActivity extends Activity {
   private GridView gridView;
   ImageLoaderAdapter imageLoaderAdapter;
   Bundle extras = new Bundle();
-  //private RequestParams defaultParams = new RequestParams();
   private HashMap<String,String> savedParams = new HashMap<String,String>();
 
 	@Override
@@ -115,6 +114,7 @@ public class MainActivity extends Activity {
 	  imageLoaderAdapter.clear();
 	  EditText queryView = (EditText) findViewById(R.id.editText1);
 	  RequestParams params = new RequestParams();
+	  params.put("q", queryView.getText().toString());
 	  for (String key : this.savedParams.keySet()) {
 	    params.put(key, this.savedParams.get(key));
 	  }
